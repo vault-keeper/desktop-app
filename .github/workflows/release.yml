@@ -9,6 +9,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write   # 允许创建 Release 和上传产物
+
 jobs:
   build:
     strategy:
