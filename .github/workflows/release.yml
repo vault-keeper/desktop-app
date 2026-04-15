@@ -1,0 +1,74 @@
+name: Release Build
+
+# 触发方式：
+#   1. 推送 v* 格式的 tag（如 git tag v1.0.1 && git push origin v1.0.1）
+#   2. 在 GitHub Actions 页面手动触发（workflow_dispatch）
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS Apple Silicon (M 系列芯片)
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            label: macos-arm64
+
+          # macOS Intel
+          - platform: macos-latest
+            target: x86_64-apple-darwin
+            label: macos-x64
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Node.js ───────────────────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      # ── Rust ──────────────────────────────────────────────────
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # 缓存 Rust 编译产物，大幅缩短后续构建时间
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      # ── Tauri Build ───────────────────────────────────────────
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # 推送 tag 时自动创建 GitHub Release 并上传产物
+          tagName: ${{ github.ref_name }}
+          releaseName: VaultKeeper ${{ github.ref_name }}
+          releaseBody: |
+            ## 更新内容
+            请查看 CHANGELOG 或 commit 记录。
+          releaseDraft: true      # 先创建草稿，确认后手动发布
+          prerelease: false
+          args: --target ${{ matrix.target }}
