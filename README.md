@@ -3,6 +3,8 @@ vault-keeper
 
 A privacy-focused, offline-first personal vault application for managing accounts, bookmarks, notes, and media — all encrypted locally on your device.
 
+[Why vault-keeper?](https://github.com/AI-Star-Dev/vaultkeeper-releases/issues/1)
+
 ## Features
 
 - **Account Management** — store and organize credentials with encrypted fields
