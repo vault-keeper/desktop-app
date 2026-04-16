@@ -292,6 +292,7 @@ export default {
     deleteWeekly: 'Delete Weekly Report',
     period: 'Period',
     weeklyTitleFmt: '{year} W{week} Weekly',
+    searchPlaceholder: 'Search reports...',
   },
 
   media: {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useRouter } from 'vue-router'
@@ -15,6 +15,15 @@ const accounts = ref<Account[]>([])
 const groups = ref<any[]>([])
 const loading = ref(true)
 const searchQuery = ref('')
+const filteredAccounts = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return accounts.value
+  return accounts.value.filter(acc =>
+    acc.title.toLowerCase().includes(q) ||
+    (acc.url ?? '').toLowerCase().includes(q) ||
+    (acc.username ?? '').toLowerCase().includes(q)
+  )
+})
 const selectedGroupId = ref<string | null>(null)
 const showCreateModal = ref(false)
 const showGenModal = ref(false)
@@ -252,13 +261,13 @@ loadData()
       <div v-for="i in 5" :key="i" class="h-16 bg-muted/50 rounded-lg animate-pulse" />
     </div>
 
-    <div v-else-if="accounts.length === 0" class="text-center py-16 text-muted-foreground">
+    <div v-else-if="filteredAccounts.length === 0" class="text-center py-16 text-muted-foreground">
       <p class="text-lg font-medium">{{ t('accounts.empty') }}</p>
       <p class="text-sm mt-1">{{ t('accounts.emptyPrompt') }}</p>
     </div>
 
     <div v-else class="space-y-2">
-      <div v-for="acc in accounts" :key="acc.id"
+      <div v-for="acc in filteredAccounts" :key="acc.id"
            @click="openDetail(acc.id)"
            class="group bg-card rounded-xl border border-border p-4 cursor-pointer
                   hover:border-primary/50 hover:shadow-sm transition-all">

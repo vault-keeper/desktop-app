@@ -292,6 +292,7 @@ export default {
     deleteWeekly: '删除周报',
     period: '周期',
     weeklyTitleFmt: '{year}年第{week}周周报',
+    searchPlaceholder: '搜索报告标题或内容...',
   },
 
   media: {

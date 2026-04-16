@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import type { Report } from '../../types'
-import { Plus, Calendar, FileText } from 'lucide-vue-next'
+import { Plus, Calendar, FileText, Search } from 'lucide-vue-next'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -12,6 +12,7 @@ const reports = ref<Report[]>([])
 const loading = ref(true)
 const activeTab = ref<'daily' | 'weekly'>('daily')
 const showCreateModal = ref(false)
+const searchQuery = ref('')
 
 // ── date helpers ──────────────────────────────────────────────
 function toDateStr(d: Date): string {
@@ -82,9 +83,14 @@ watch(showCreateModal, (open) => {
 })
 
 // ── data ──────────────────────────────────────────────────────
-const filteredReports = computed(() =>
-  reports.value.filter(r => r.type === activeTab.value)
-)
+const filteredReports = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  return reports.value.filter(r => {
+    if (r.type !== activeTab.value) return false
+    if (!q) return true
+    return r.title.toLowerCase().includes(q) || r.content.toLowerCase().includes(q)
+  })
+})
 
 async function loadData() {
   loading.value = true
@@ -159,6 +165,16 @@ loadData()
         class="px-4 py-2 rounded-md text-sm font-medium transition-colors"
         :class="activeTab === key ? 'bg-background shadow-sm' : 'hover:bg-muted/50'"
       >{{ t(labelKey) }}</button>
+    </div>
+
+    <!-- Search -->
+    <div class="mb-4">
+      <div class="relative max-w-md">
+        <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <input v-model="searchQuery" :placeholder="t('reports.searchPlaceholder')"
+               class="w-full pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-sm
+                      placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+      </div>
     </div>
 
     <!-- Loading -->
