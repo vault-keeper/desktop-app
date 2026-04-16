@@ -97,8 +97,9 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: VaultKeeper ${{ github.ref_name }}
           releaseBody: |
-            ## 更新内容
-            请查看 CHANGELOG 或 commit 记录。
+            ## ChangeLog
+            
+            Note: Windows releases is [here](https://github.com/AI-Star-Dev/vaultkeeper-releases/releases)
           releaseDraft: true      # 先创建草稿，确认后手动发布
           prerelease: false
           args: --target ${{ matrix.target }}

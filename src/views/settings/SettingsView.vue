@@ -3,11 +3,12 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useAuthStore } from '../../stores/auth'
 import { setLocale, type SupportedLocale } from '../../i18n'
 import {
   Monitor, Moon, Sun, Clock, Shield, Key,
-  Database, Upload, Download, Languages
+  Database, Upload, Download, Languages, RefreshCw, ExternalLink
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
@@ -22,6 +23,27 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const passwordError = ref('')
 const passwordSuccess = ref(false)
+
+// ── check for updates ─────────────────────────────────────────
+type UpdateState = 'idle' | 'checking' | 'upToDate' | 'hasUpdate' | 'error'
+const updateState = ref<UpdateState>('idle')
+const latestVersion = ref('')
+const downloadUrl = ref('')
+const updateError = ref('')
+
+async function checkForUpdates() {
+  updateState.value = 'checking'
+  updateError.value = ''
+  try {
+    const result = await invoke<{ current_version: string; latest_version: string; has_update: boolean; download_url: string }>('check_for_updates')
+    latestVersion.value = result.latest_version
+    downloadUrl.value = result.download_url
+    updateState.value = result.has_update ? 'hasUpdate' : 'upToDate'
+  } catch (e: any) {
+    updateError.value = e.toString()
+    updateState.value = 'error'
+  }
+}
 
 // ── theme ─────────────────────────────────────────────────────
 function applyTheme(t: 'light' | 'dark' | 'system') {
@@ -196,6 +218,31 @@ onMounted(async () => {
       <h2 class="font-semibold mb-2">{{ t('settings.about') }}</h2>
       <p class="text-sm text-muted-foreground">{{ t('settings.version') }} {{ appVersion }}</p>
       <p class="text-xs text-muted-foreground mt-1">{{ t('settings.securityInfo') }}</p>
+
+      <!-- Check for updates -->
+      <div class="mt-4 flex items-center gap-3 flex-wrap">
+        <button @click="checkForUpdates" :disabled="updateState === 'checking'"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg border border-border
+                       text-sm hover:bg-muted transition-colors disabled:opacity-50">
+          <RefreshCw class="w-4 h-4" :class="{ 'animate-spin': updateState === 'checking' }" />
+          {{ updateState === 'checking' ? t('settings.updateChecking') : t('settings.checkUpdate') }}
+        </button>
+        <span v-if="updateState === 'upToDate'" class="text-sm text-green-600 dark:text-green-400">
+          {{ t('settings.updateUpToDate') }}
+        </span>
+        <span v-else-if="updateState === 'error'" class="text-sm text-destructive" :title="updateError">
+          {{ t('settings.updateError') }}
+        </span>
+      </div>
+      <div v-if="updateState === 'hasUpdate'"
+           class="mt-3 p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between gap-3">
+        <span class="text-sm text-primary">{{ t('settings.updateAvailable', { version: latestVersion }) }}</span>
+        <button @click="openUrl(downloadUrl)"
+                class="shrink-0 flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+          {{ t('settings.updateDownload') }}
+          <ExternalLink class="w-3 h-3" />
+        </button>
+      </div>
     </section>
 
     <!-- Change Password Modal -->

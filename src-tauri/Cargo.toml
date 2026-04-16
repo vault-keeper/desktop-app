@@ -1,6 +1,6 @@
 [package]
 name = "vaultkeeper"
-version = "1.0.1"
+version = "1.0.2"
 description = "A privacy-focused, offline-first personal vault application for managing accounts, bookmarks, notes, and media — all encrypted locally on your device."
 authors = ["VaultKeeper", "AI-Star-Dev", "辰星"]
 edition = "2024"
@@ -14,6 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-single-instance = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"

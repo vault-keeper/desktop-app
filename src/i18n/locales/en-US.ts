@@ -351,6 +351,12 @@ export default {
     about: 'About VaultKeeper',
     version: 'Version',
     securityInfo: 'Data encrypted with AES-256 · Master password never exposed',
+    checkUpdate: 'Check for Updates',
+    updateChecking: 'Checking...',
+    updateUpToDate: "You're up to date",
+    updateAvailable: 'New version available: v{version}',
+    updateDownload: 'Download',
+    updateError: 'Check failed, please try again later',
     changePasswordModal: {
       title: 'Change Master Password',
       currentPlaceholder: 'Current password',

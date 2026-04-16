@@ -351,6 +351,12 @@ export default {
     about: '关于 VaultKeeper',
     version: '版本',
     securityInfo: '数据使用 AES-256 加密存储 · 主密码永不泄露',
+    checkUpdate: '检查更新',
+    updateChecking: '检查中...',
+    updateUpToDate: '已是最新版本',
+    updateAvailable: '发现新版本 v{version}',
+    updateDownload: '前往下载',
+    updateError: '检查失败，请稍后重试',
     changePasswordModal: {
       title: '修改主密码',
       currentPlaceholder: '当前密码',
