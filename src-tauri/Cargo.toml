@@ -1,6 +1,6 @@
 [package]
 name = "vaultkeeper"
-version = "1.0.2"
+version = "1.0.3"
 description = "A privacy-focused, offline-first personal vault application for managing accounts, bookmarks, notes, and media — all encrypted locally on your device."
 authors = ["VaultKeeper", "AI-Star-Dev", "辰星"]
 edition = "2024"
@@ -29,11 +29,11 @@ hkdf = "0.12"
 sha2 = "0.10"
 hmac = "0.12"
 rand = "0.8"
-bip39 = "2"
 chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl"] }
 reqwest = { version = "0.12", features = ["rustls-tls"], default-features = false }
+zip = "2"
 
 [profile.release]
 strip = true

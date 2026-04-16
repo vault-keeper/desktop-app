@@ -15,7 +15,6 @@ A privacy-focused, offline-first personal vault application for managing account
 - **Tags** — tag and filter content across all categories
 - **Workspace** — multi-workspace support with isolated storage
 - **Lock Screen** — master-password protection with Argon2 hashing and AES-GCM encryption
-- **Recovery** — BIP39 mnemonic phrase for workspace recovery
 
 ## Security Architecture
 
@@ -24,7 +23,7 @@ VaultKeeper uses a layered encryption model:
 ### Layer 1 — SQLCipher (database-level)
 All workspace databases (`.db` files) are encrypted at rest using **SQLCipher** with AES-256-CBC.  The encryption key is the 32-byte master key derived from your master password via **Argon2id** (64 MB memory, 3 iterations).  Without the correct master password the database file is unreadable — it appears as random bytes to any external tool.
 
-The meta database (`vault_meta.db`) is not SQLCipher-encrypted because it must be readable before the master key is known (to verify the password on startup).  Its sensitive rows are already protected at the application level (Argon2id verify hash + AES-GCM encrypted master key backup).
+The meta database (`vault_meta.db`) is not SQLCipher-encrypted because it must be readable before the master key is known (to verify the password on startup).  Its sensitive rows are protected at the application level via an Argon2id verify hash.
 
 ### Layer 2 — Application-level field encryption (AES-256-GCM)
 Even inside the encrypted database, sensitive account fields are individually encrypted with the master key:
@@ -43,7 +42,7 @@ Individual notes can be locked with a **secondary password** independent of the 
 - Master key lives only in memory (cleared on lock / app exit)
 - Argon2id parameters: 64 MB memory · 3 time cost · 4 parallelism
 - Nonces: 12-byte random (OS RNG) per encryption operation
-- Recovery: 24-word BIP39 mnemonic stores the master key encrypted with a backup key
+- **There is no password recovery mechanism** — forgetting the master password means permanent loss of access to all workspace data
 
 ## Tech Stack
 

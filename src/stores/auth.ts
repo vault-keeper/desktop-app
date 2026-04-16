@@ -6,8 +6,6 @@ export const useAuthStore = defineStore('auth', () => {
   const isUnlocked = ref(false)
   const isInitialized = ref(false)
   const isSetupDone = ref(false)
-  const mnemonicWords = ref<string[]>([])
-  const showMnemonic = ref(false)
 
   // Auto-lock timer
   const lastActivity = ref(Date.now())
@@ -32,9 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function setupMasterPassword(password: string) {
-    const result = await invoke<{ mnemonic: string[] }>('setup_master_password', { password })
-    mnemonicWords.value = result.mnemonic
-    showMnemonic.value = true
+    await invoke('setup_master_password', { password })
     isUnlocked.value = true
     isSetupDone.value = true
   }
@@ -48,19 +44,9 @@ export const useAuthStore = defineStore('auth', () => {
     return valid
   }
 
-  async function recoverFromMnemonic(words: string[]): Promise<boolean> {
-    const valid = await invoke<boolean>('recover_from_mnemonic', { mnemonicWords: words })
-    if (valid) {
-      isUnlocked.value = true
-      lastActivity.value = Date.now()
-    }
-    return valid
-  }
-
   async function lockVault() {
     await invoke('lock_vault')
     isUnlocked.value = false
-    mnemonicWords.value = []
   }
 
   async function changeMasterPassword(currentPassword: string, newPassword: string) {
@@ -81,29 +67,20 @@ export const useAuthStore = defineStore('auth', () => {
     autoLockMinutes.value = minutes
   }
 
-  function confirmMnemonicViewed() {
-    showMnemonic.value = false
-    mnemonicWords.value = []
-  }
-
   return {
     isUnlocked,
     isInitialized,
     isSetupDone,
-    mnemonicWords,
-    showMnemonic,
     lastActivity,
     autoLockMinutes,
     isSetupComplete,
     checkSetup,
     setupMasterPassword,
     verifyMasterPassword,
-    recoverFromMnemonic,
     lockVault,
     changeMasterPassword,
     updateActivity,
     shouldAutoLock,
     setAutoLockMinutes,
-    confirmMnemonicViewed,
   }
 })

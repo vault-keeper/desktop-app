@@ -10,3 +10,4 @@ pub mod search;
 pub mod settings;
 pub mod fetch;
 pub mod updater;
+pub mod backup;

@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../stores/auth'
 import { useRouter } from 'vue-router'
-import { Shield, Eye, EyeOff, Lock } from 'lucide-vue-next'
+import { Shield, Eye, EyeOff, AlertTriangle } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -13,8 +13,6 @@ const password = ref('')
 const showPassword = ref(false)
 const error = ref('')
 const loading = ref(false)
-const mode = ref<'unlock' | 'recover'>('unlock')
-const recoveryWords = ref('')
 
 onMounted(async () => {
   if (!authStore.isSetupDone) {
@@ -40,28 +38,6 @@ async function handleUnlock() {
     password.value = ''
   }
 }
-
-async function handleRecover() {
-  const words = recoveryWords.value.trim().split(/\s+/)
-  if (words.length !== 24) {
-    error.value = t('lock.recoveryWrongCount')
-    return
-  }
-  error.value = ''
-  loading.value = true
-  try {
-    const valid = await authStore.recoverFromMnemonic(words)
-    if (valid) {
-      router.push({ name: 'workspaces' })
-    } else {
-      error.value = t('lock.recoveryMismatch')
-    }
-  } catch (e) {
-    error.value = t('lock.recoveryFailed') + e
-  } finally {
-    loading.value = false
-  }
-}
 </script>
 
 <template>
@@ -78,26 +54,7 @@ async function handleRecover() {
 
       <!-- Unlock Card -->
       <div class="bg-card rounded-xl border border-border p-6 shadow-sm">
-        <!-- Mode tabs -->
-        <div class="flex gap-2 mb-6 border-b border-border pb-4">
-          <button
-            @click="mode = 'unlock'; error = ''"
-            class="flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            :class="mode === 'unlock' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
-          >
-            <Lock class="w-4 h-4 inline mr-1.5" />{{ t('lock.passwordTab') }}
-          </button>
-          <button
-            @click="mode = 'recover'; error = ''"
-            class="flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors"
-            :class="mode === 'recover' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'"
-          >
-            {{ t('lock.recoveryTab') }}
-          </button>
-        </div>
-
-        <!-- Password unlock -->
-        <form v-if="mode === 'unlock'" @submit.prevent="handleUnlock" class="space-y-4">
+        <form @submit.prevent="handleUnlock" class="space-y-4">
           <div class="relative">
             <input
               v-model="password"
@@ -133,33 +90,16 @@ async function handleRecover() {
             {{ loading ? t('lock.verifying') : t('lock.unlock') }}
           </button>
         </form>
+      </div>
 
-        <!-- Mnemonic recovery -->
-        <div v-else class="space-y-4">
-          <p class="text-sm text-muted-foreground">{{ t('lock.recoveryHint') }}</p>
-          <textarea
-            v-model="recoveryWords"
-            :placeholder="t('lock.recoveryPlaceholder')"
-            rows="4"
-            class="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm font-mono
-                   placeholder:text-muted-foreground
-                   focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-            :disabled="loading"
-          />
-          <div v-if="error" class="text-sm text-destructive">{{ error }}</div>
-          <button
-            @click="handleRecover"
-            class="w-full rounded-lg bg-primary text-primary-foreground px-4 py-3 text-sm font-medium
-                   hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-            :disabled="loading || !recoveryWords.trim()"
-          >
-            {{ loading ? t('lock.recovering') : t('lock.recoverBtn') }}
-          </button>
-        </div>
+      <!-- Password loss warning -->
+      <div class="flex items-start gap-2 mt-4 px-1">
+        <AlertTriangle class="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+        <p class="text-xs text-destructive leading-relaxed">{{ t('lock.passwordLossWarning') }}</p>
       </div>
 
       <!-- Security Notice -->
-      <p class="text-xs text-muted-foreground text-center mt-4">
+      <p class="text-xs text-muted-foreground text-center mt-3">
         {{ t('lock.securityNotice') }}
       </p>
     </div>

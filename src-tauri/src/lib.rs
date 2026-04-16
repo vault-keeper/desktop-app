@@ -31,7 +31,6 @@ pub fn run() {
             commands::auth::is_setup_complete,
             commands::auth::setup_master_password,
             commands::auth::verify_master_password,
-            commands::auth::recover_from_mnemonic,
             commands::auth::lock_vault,
             commands::auth::is_vault_unlocked,
             commands::auth::change_master_password,
@@ -110,6 +109,9 @@ pub fn run() {
             commands::fetch::fetch_url_metadata,
             // Updater
             commands::updater::check_for_updates,
+            // Backup
+            commands::backup::export_vault,
+            commands::backup::import_vault,
         ])
         .run(tauri::generate_context!())
         .expect("error while running VaultKeeper");

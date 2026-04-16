@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { open, save } from '@tauri-apps/plugin-dialog'
 import { useAuthStore } from '../../stores/auth'
 import { setLocale, type SupportedLocale } from '../../i18n'
 import {
@@ -84,6 +85,10 @@ async function changePassword() {
     currentPassword.value = ''
     newPassword.value = ''
     confirmPassword.value = ''
+    setTimeout(() => {
+      showChangePassword.value = false
+      passwordSuccess.value = false
+    }, 1500)
   } catch (e: any) {
     passwordError.value = e.toString()
   }
@@ -95,7 +100,90 @@ async function saveAutoLock() {
   authStore.autoLockMinutes = autoLockMinutes.value
 }
 
-// ── init ──────────────────────────────────────────────────────
+// ── export ────────────────────────────────────────────────────
+const showExportModal = ref(false)
+const exportPassword = ref('')
+const exportPasswordConfirm = ref('')
+const exportError = ref('')
+const exporting = ref(false)
+const exportSuccess = ref(false)
+
+async function startExport() {
+  exportError.value = ''
+  exportSuccess.value = false
+  if (exportPassword.value !== exportPasswordConfirm.value) {
+    exportError.value = t('settings.backup.exportPasswordMismatch')
+    return
+  }
+  if (exportPassword.value.length < 1) {
+    exportError.value = t('settings.backup.exportPasswordLabel') + ' required'
+    return
+  }
+  const destPath = await save({
+    defaultPath: `vaultkeeper-backup-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.vkbak`,
+    filters: [{ name: 'VaultKeeper Backup', extensions: ['vkbak'] }],
+  })
+  if (!destPath) return
+  exporting.value = true
+  try {
+    await invoke('export_vault', { exportPassword: exportPassword.value, destPath })
+    exportSuccess.value = true
+    exportPassword.value = ''
+    exportPasswordConfirm.value = ''
+    setTimeout(() => {
+      showExportModal.value = false
+      exportSuccess.value = false
+    }, 1500)
+  } catch (e: any) {
+    exportError.value = e.toString()
+  } finally {
+    exporting.value = false
+  }
+}
+
+// ── import ────────────────────────────────────────────────────
+const showImportModal = ref(false)
+const importFilePath = ref('')
+const importPassword = ref('')
+const importError = ref('')
+const importing = ref(false)
+const importSuccessCount = ref(0)
+const importSuccess = ref(false)
+
+async function pickImportFile() {
+  const selected = await open({
+    multiple: false,
+    filters: [{ name: 'VaultKeeper Backup', extensions: ['vkbak'] }],
+  })
+  if (!selected) return
+  importFilePath.value = selected as string
+  importError.value = ''
+  importSuccess.value = false
+  showImportModal.value = true
+}
+
+async function startImport() {
+  importError.value = ''
+  importSuccess.value = false
+  importing.value = true
+  try {
+    const count = await invoke<number>('import_vault', {
+      srcPath: importFilePath.value,
+      exportPassword: importPassword.value,
+    })
+    importSuccessCount.value = count
+    importSuccess.value = true
+    importPassword.value = ''
+  } catch (e: any) {
+    const msg = e.toString()
+    importError.value = msg.includes('Incorrect export password')
+      ? t('settings.backup.importWrongPassword')
+      : msg
+  } finally {
+    importing.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const settings = await invoke<any>('get_settings')
@@ -200,12 +288,14 @@ onMounted(async () => {
         {{ t('settings.dataManagement') }}
       </h2>
       <div class="space-y-2">
-        <button class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border
+        <button @click="showExportModal = true"
+                class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border
                        text-sm hover:bg-muted transition-colors w-full">
           <Download class="w-4 h-4" />
           {{ t('settings.exportData') }}
         </button>
-        <button class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border
+        <button @click="pickImportFile"
+                class="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border
                        text-sm hover:bg-muted transition-colors w-full">
           <Upload class="w-4 h-4" />
           {{ t('settings.importData') }}
@@ -269,6 +359,78 @@ onMounted(async () => {
             {{ t('settings.changePasswordModal.submitBtn') }}
           </button>
           <button @click="showChangePassword = false; passwordError = ''; passwordSuccess = false"
+                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground">
+            {{ t('common.cancel') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div v-if="showExportModal"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+         @click.self="showExportModal = false; exportError = ''; exportPassword = ''; exportPasswordConfirm = ''">
+      <div class="bg-card rounded-xl border border-border p-6 w-full max-w-sm shadow-xl">
+        <h2 class="text-lg font-semibold mb-1">{{ t('settings.backup.exportTitle') }}</h2>
+        <p class="text-sm text-muted-foreground mb-4">{{ t('settings.backup.exportDesc') }}</p>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.exportPasswordLabel') }}</label>
+            <input v-model="exportPassword" type="password" autofocus
+                   class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
+                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          </div>
+          <div>
+            <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.exportPasswordConfirmLabel') }}</label>
+            <input v-model="exportPasswordConfirm" type="password"
+                   @keyup.enter="startExport"
+                   class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
+                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          </div>
+          <p v-if="exportError" class="text-sm text-destructive">{{ exportError }}</p>
+          <p v-if="exportSuccess" class="text-sm text-green-600">{{ t('settings.backup.exportSuccess') }}</p>
+          <button @click="startExport" :disabled="exporting"
+                  class="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm
+                         font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+            {{ exporting ? t('settings.backup.exporting') : t('settings.backup.exportBtn') }}
+          </button>
+          <button @click="showExportModal = false; exportError = ''; exportPassword = ''; exportPasswordConfirm = ''"
+                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground">
+            {{ t('common.cancel') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div v-if="showImportModal"
+         class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+         @click.self="showImportModal = false; importError = ''; importPassword = ''">
+      <div class="bg-card rounded-xl border border-border p-6 w-full max-w-sm shadow-xl">
+        <h2 class="text-lg font-semibold mb-1">{{ t('settings.backup.importTitle') }}</h2>
+        <p class="text-sm text-muted-foreground mb-4">{{ t('settings.backup.importDesc') }}</p>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.importFile') }}</label>
+            <p class="text-sm truncate text-foreground/80 bg-muted rounded px-3 py-2">{{ importFilePath }}</p>
+          </div>
+          <div>
+            <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.importPasswordLabel') }}</label>
+            <input v-model="importPassword" type="password" autofocus
+                   @keyup.enter="startImport"
+                   class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
+                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+          </div>
+          <p v-if="importError" class="text-sm text-destructive">{{ importError }}</p>
+          <p v-if="importSuccess" class="text-sm text-green-600">
+            {{ t('settings.backup.importSuccess', { count: importSuccessCount }) }}
+          </p>
+          <button @click="startImport" :disabled="importing || importSuccess"
+                  class="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm
+                         font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+            {{ importing ? t('settings.backup.importing') : t('settings.backup.importBtn') }}
+          </button>
+          <button @click="showImportModal = false; importError = ''; importPassword = ''"
                   class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground">
             {{ t('common.cancel') }}
           </button>

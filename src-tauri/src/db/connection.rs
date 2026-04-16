@@ -230,6 +230,39 @@ impl AppState {
         Ok(())
     }
 
+    /// Re-encrypt all workspace databases from old_key to new_key using SQLCipher PRAGMA rekey.
+    /// Must be called BEFORE updating vault_meta.db with the new password hash,
+    /// so that a mid-operation failure leaves the vault in a consistent (old-password) state.
+    pub async fn rekey_all_workspace_dbs(&self, old_key_hex: &str, new_key_hex: &str) -> Result<(), String> {
+        let meta_conn = self.get_meta_connection().await?;
+
+        let db_files: Vec<String> = {
+            let mut stmt = meta_conn
+                .prepare("SELECT db_file FROM workspaces")
+                .map_err(|e| e.to_string())?;
+            stmt.query_map([], |row| row.get::<_, String>(0))
+                .map_err(|e| e.to_string())?
+                .filter_map(|r| r.ok())
+                .collect()
+        };
+
+        let app_data_dir = self.app_handle.path().app_config_dir()
+            .map_err(|e| format!("Failed to get app config dir: {}", e))?;
+
+        for db_file in db_files {
+            let db_path = app_data_dir.join(&db_file);
+            if !db_path.exists() {
+                continue;
+            }
+            let conn = Self::try_open_encrypted(&db_path, old_key_hex)
+                .map_err(|_| format!("Cannot open '{}' with current key", db_file))?;
+            conn.execute_batch(&format!("PRAGMA rekey = \"x'{}'\"", new_key_hex))
+                .map_err(|e| format!("Failed to rekey '{}': {}", db_file, e))?;
+        }
+
+        Ok(())
+    }
+
     /// Delete a workspace database file.
     pub async fn delete_workspace_db(&self, db_file: &str) -> Result<(), String> {
         let app_data_dir = self.app_handle.path().app_config_dir()

@@ -3,21 +3,17 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '../../stores/auth'
 import { useRouter } from 'vue-router'
-import { Shield, Eye, EyeOff, ArrowRight, Copy, Check } from 'lucide-vue-next'
+import { Shield, Eye, EyeOff, ArrowRight, AlertTriangle } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const { t } = useI18n()
 
-const step = ref<'password' | 'mnemonic' | 'confirm'>('password')
 const password = ref('')
 const confirmPassword = ref('')
 const showPassword = ref(false)
 const error = ref('')
 const loading = ref(false)
-const copiedIndex = ref<number | null>(null)
-const confirmedWords = ref<string>('')
-const confirmed = ref(false)
 
 const passwordStrength = computed(() => {
   const p = password.value
@@ -49,40 +45,12 @@ async function handleSetPassword() {
   loading.value = true
   try {
     await authStore.setupMasterPassword(password.value)
-    step.value = 'mnemonic'
+    router.push({ name: 'workspaces' })
   } catch (e: any) {
     error.value = t('setup.setupFailed') + e
   } finally {
     loading.value = false
   }
-}
-
-async function copyMnemonic() {
-  try {
-    await navigator.clipboard.writeText(authStore.mnemonicWords.join(' '))
-  } catch {
-    // Fallback
-  }
-}
-
-async function copyWord(index: number) {
-  copiedIndex.value = index
-  try {
-    await navigator.clipboard.writeText(authStore.mnemonicWords[index])
-  } catch {
-    // Fallback
-  }
-  setTimeout(() => { copiedIndex.value = null }, 1000)
-}
-
-function goToConfirm() {
-  step.value = 'confirm'
-}
-
-async function handleConfirm() {
-  if (!confirmed.value) return
-  authStore.confirmMnemonicViewed()
-  router.push({ name: 'workspaces' })
 }
 </script>
 
@@ -97,8 +65,14 @@ async function handleConfirm() {
         <h1 class="text-2xl font-bold tracking-tight">{{ t('setup.title') }}</h1>
       </div>
 
-      <!-- Step 1: Set Password -->
-      <div v-if="step === 'password'" class="bg-card rounded-xl border border-border p-6 shadow-sm">
+      <!-- Password warning -->
+      <div class="flex items-start gap-3 rounded-xl border border-destructive/40 bg-destructive/5 p-4 mb-4">
+        <AlertTriangle class="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+        <p class="text-sm text-destructive leading-relaxed">{{ t('setup.passwordLossWarning') }}</p>
+      </div>
+
+      <!-- Set Password -->
+      <div class="bg-card rounded-xl border border-border p-6 shadow-sm">
         <h2 class="text-lg font-semibold mb-1">{{ t('setup.setPassword') }}</h2>
         <p class="text-sm text-muted-foreground mb-6">{{ t('setup.passwordDesc') }}</p>
 
@@ -161,62 +135,6 @@ async function handleConfirm() {
             <ArrowRight v-if="!loading" class="w-4 h-4" />
           </button>
         </form>
-      </div>
-
-      <!-- Step 2: Show Mnemonic -->
-      <div v-if="step === 'mnemonic'" class="bg-card rounded-xl border border-border p-6 shadow-sm">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-destructive/10 text-destructive text-xs font-bold">!</span>
-          <h2 class="text-lg font-semibold">{{ t('setup.recoveryTitle') }}</h2>
-        </div>
-        <p class="text-sm text-muted-foreground mb-6">{{ t('setup.recoveryDesc') }}</p>
-
-        <div class="grid grid-cols-3 gap-2 mb-6">
-          <div v-for="(word, i) in authStore.mnemonicWords" :key="i"
-               class="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border text-sm group cursor-pointer hover:bg-muted transition-colors"
-               @click="copyWord(i)">
-            <span class="text-xs text-muted-foreground w-5">{{ i + 1 }}</span>
-            <span class="font-mono text-sm">{{ word }}</span>
-            <Check v-if="copiedIndex === i" class="w-3 h-3 text-green-500 ml-auto" />
-            <Copy v-else class="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 ml-auto transition-opacity" />
-          </div>
-        </div>
-
-        <div class="bg-destructive/5 border border-destructive/20 rounded-lg p-3 mb-6">
-          <p class="text-xs text-destructive font-medium">{{ t('setup.recoveryWarning') }}</p>
-        </div>
-
-        <button
-          @click="goToConfirm"
-          class="w-full rounded-lg bg-primary text-primary-foreground px-4 py-3 text-sm font-medium
-                 hover:bg-primary/90 transition-colors"
-        >
-          {{ t('setup.recoverySaved') }}
-        </button>
-      </div>
-
-      <!-- Step 3: Confirm -->
-      <div v-if="step === 'confirm'" class="bg-card rounded-xl border border-border p-6 shadow-sm">
-        <h2 class="text-lg font-semibold mb-1">{{ t('setup.confirmRecovery') }}</h2>
-        <p class="text-sm text-muted-foreground mb-6">{{ t('setup.confirmRecoveryDesc') }}</p>
-
-        <div class="space-y-3">
-          <label class="flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" v-model="confirmed"
-                   class="mt-0.5 rounded border-input" />
-            <span class="text-sm">{{ t('setup.confirmCheckbox') }}</span>
-          </label>
-        </div>
-
-        <button
-          @click="handleConfirm"
-          class="w-full rounded-lg bg-primary text-primary-foreground px-4 py-3 text-sm font-medium
-                 hover:bg-primary/90 transition-colors mt-6
-                 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="!confirmed"
-        >
-          {{ t('setup.startBtn') }}
-        </button>
       </div>
     </div>
   </div>
