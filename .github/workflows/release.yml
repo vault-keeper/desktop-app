@@ -28,11 +28,38 @@ jobs:
             target: x86_64-apple-darwin
             label: macos-x64
 
+          # Linux x86_64
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            label: linux-x64
+
     runs-on: ${{ matrix.platform }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # ── Linux 系统依赖（仅 ubuntu） ───────────────────────────────
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            jq \
+            libsqlcipher-dev \
+            ibus-gtk3 \
+            fcitx5-frontend-gtk3 \
+            protobuf-compiler
 
       # ── Node.js ───────────────────────────────────────────────
       - name: Setup Node.js
