@@ -197,6 +197,17 @@ pub async fn import_vault(
     let tmp_dir = std::env::temp_dir();
     let mut imported = 0u32;
 
+    // Pre-fetch existing workspace names for conflict detection
+    let meta_conn = state.get_meta_connection().await?;
+    let mut existing_names: std::collections::HashSet<String> = {
+        let mut stmt = meta_conn.prepare("SELECT name FROM workspaces")
+            .map_err(|e| e.to_string())?;
+        stmt.query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect()
+    };
+
     // Process each workspace
     for ws in &manifest.workspaces {
         let data = match workspace_data.iter().find(|(f, _)| f == &ws.db_file) {
@@ -222,6 +233,22 @@ pub async fn import_vault(
                 })?;
         }
 
+        // Resolve name conflict: append (YYMMDD-xxxx) suffix if needed
+        let final_name = if existing_names.contains(&ws.name) {
+            let date = chrono::Utc::now().format("%y%m%d").to_string();
+            let suffix: String = {
+                use rand::Rng;
+                rand::thread_rng()
+                    .sample_iter(rand::distributions::Alphanumeric)
+                    .take(4)
+                    .map(|c| (c as char).to_lowercase().next().unwrap())
+                    .collect()
+            };
+            format!("{}({}-{})", ws.name, date, suffix)
+        } else {
+            ws.name.clone()
+        };
+
         // Move to app data dir with a fresh unique filename
         let new_id = uuid::Uuid::new_v4().to_string();
         let new_db_file = format!("workspace_{}.db", &new_id[..8]);
@@ -230,15 +257,17 @@ pub async fn import_vault(
 
         // Register workspace in meta db
         let now = chrono::Utc::now().to_rfc3339();
-        state.get_meta_connection().await?.execute(
+        meta_conn.execute(
             "INSERT INTO workspaces (id, name, icon, color, db_file, sort_order, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![
-                &new_id, &ws.name, &ws.icon, &ws.color,
+                &new_id, &final_name, &ws.icon, &ws.color,
                 &new_db_file, ws.sort_order, &now, &now,
             ],
-        ).map_err(|e| format!("Failed to register workspace '{}': {}", ws.name, e))?;
+        ).map_err(|e| format!("Failed to register workspace '{}': {}", final_name, e))?;
 
+        // Track the new name so subsequent workspaces in this batch also avoid it
+        existing_names.insert(final_name);
         imported += 1;
     }
 
