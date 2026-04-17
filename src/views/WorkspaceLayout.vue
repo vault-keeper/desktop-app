@@ -90,7 +90,7 @@ const ws = workspaceStore.currentWorkspace
       <!-- Footer -->
       <div class="p-2 border-t border-border space-y-1">
         <router-link
-          :to="{ name: 'settings', params: { workspaceId: ws?.id } }"
+          :to="{ name: 'settings' }"
           class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground
                  hover:bg-muted hover:text-foreground transition-colors"
           :title="sidebarCollapsed ? t('nav.settings') : undefined"

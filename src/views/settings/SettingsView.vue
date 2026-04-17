@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
 import { getVersion } from '@tauri-apps/api/app'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { useAuthStore } from '../../stores/auth'
+import { useWorkspaceStore } from '../../stores/workspace'
 import { setLocale, type SupportedLocale } from '../../i18n'
 import {
   Monitor, Moon, Sun, Clock, Shield, Key,
-  Database, Upload, Download, Languages, RefreshCw, ExternalLink
+  Database, Upload, Download, Languages, RefreshCw, ExternalLink, ArrowLeft
 } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
+const workspaceStore = useWorkspaceStore()
+const router = useRouter()
 const { t, locale } = useI18n()
 
 const autoLockMinutes = ref(5)
@@ -24,6 +28,7 @@ const newPassword = ref('')
 const confirmPassword = ref('')
 const passwordError = ref('')
 const passwordSuccess = ref(false)
+const changingPassword = ref(false)
 
 // ── check for updates ─────────────────────────────────────────
 type UpdateState = 'idle' | 'checking' | 'upToDate' | 'hasUpdate' | 'error'
@@ -46,7 +51,16 @@ async function checkForUpdates() {
   }
 }
 
-// ── theme ─────────────────────────────────────────────────────
+function goBack() {
+  const ws = workspaceStore.currentWorkspace
+  if (ws) {
+    router.push({ name: 'workspace-home', params: { workspaceId: ws.id } })
+  } else {
+    router.push({ name: 'workspaces' })
+  }
+}
+
+
 function applyTheme(t: 'light' | 'dark' | 'system') {
   theme.value = t
   localStorage.setItem('vaultkeeper-theme', t)
@@ -76,6 +90,7 @@ async function changePassword() {
     passwordError.value = t('settings.changePasswordModal.tooShort')
     return
   }
+  changingPassword.value = true
   try {
     await invoke('change_master_password', {
       currentPassword: currentPassword.value,
@@ -91,6 +106,8 @@ async function changePassword() {
     }, 1500)
   } catch (e: any) {
     passwordError.value = e.toString()
+  } finally {
+    changingPassword.value = false
   }
 }
 
@@ -174,6 +191,10 @@ async function startImport() {
     importSuccessCount.value = count
     importSuccess.value = true
     importPassword.value = ''
+    setTimeout(() => {
+      showImportModal.value = false
+      importSuccess.value = false
+    }, 1500)
   } catch (e: any) {
     const msg = e.toString()
     importError.value = msg.includes('Incorrect export password')
@@ -195,8 +216,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">{{ t('settings.title') }}</h1>
+  <div class="h-screen flex flex-col bg-background overflow-hidden">
+    <!-- Top bar -->
+    <header class="h-14 shrink-0 border-b border-border bg-card/50 px-6 flex items-center gap-3">
+      <button @click="goBack"
+              class="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground">
+        <ArrowLeft class="w-4 h-4" />
+      </button>
+      <span class="text-sm font-medium">{{ t('settings.title') }}</span>
+    </header>
+
+    <!-- Scrollable content -->
+    <div class="flex-1 overflow-y-auto p-6">
+      <div class="max-w-2xl mx-auto">
 
     <!-- Appearance -->
     <section class="rounded-xl border border-border bg-card p-6 mb-4">
@@ -338,28 +370,33 @@ onMounted(async () => {
     <!-- Change Password Modal -->
     <div v-if="showChangePassword"
          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-         @click.self="showChangePassword = false; passwordError = ''; passwordSuccess = false">
+         @click.self="if (!changingPassword) { showChangePassword = false; passwordError = ''; passwordSuccess = false }">
       <div class="bg-card rounded-xl border border-border p-6 w-full max-w-sm shadow-xl">
         <h2 class="text-lg font-semibold mb-4">{{ t('settings.changePasswordModal.title') }}</h2>
         <div class="space-y-3">
           <input v-model="currentPassword" type="password" :placeholder="t('settings.changePasswordModal.currentPlaceholder')" autofocus
+                 :disabled="changingPassword"
                  class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
-                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
           <input v-model="newPassword" type="password" :placeholder="t('settings.changePasswordModal.newPlaceholder')"
+                 :disabled="changingPassword"
                  class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
-                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
           <input v-model="confirmPassword" type="password" :placeholder="t('settings.changePasswordModal.confirmPlaceholder')"
+                 :disabled="changingPassword"
+                 @keyup.enter="changePassword"
                  class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
-                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                        focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
           <p v-if="passwordError" class="text-sm text-destructive">{{ passwordError }}</p>
           <p v-if="passwordSuccess" class="text-sm text-green-600">{{ t('settings.changePasswordModal.success') }}</p>
-          <button @click="changePassword"
+          <button @click="changePassword" :disabled="changingPassword || passwordSuccess"
                   class="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm
-                         font-medium hover:bg-primary/90 transition-colors">
-            {{ t('settings.changePasswordModal.submitBtn') }}
+                         font-medium hover:bg-primary/90 transition-colors disabled:opacity-50">
+            {{ changingPassword ? t('common.saving') : t('settings.changePasswordModal.submitBtn') }}
           </button>
           <button @click="showChangePassword = false; passwordError = ''; passwordSuccess = false"
-                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground">
+                  :disabled="changingPassword"
+                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">
             {{ t('common.cancel') }}
           </button>
         </div>
@@ -369,7 +406,7 @@ onMounted(async () => {
     <!-- Export Modal -->
     <div v-if="showExportModal"
          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-         @click.self="showExportModal = false; exportError = ''; exportPassword = ''; exportPasswordConfirm = ''">
+         @click.self="if (!exporting) { showExportModal = false; exportError = ''; exportPassword = ''; exportPasswordConfirm = '' }">
       <div class="bg-card rounded-xl border border-border p-6 w-full max-w-sm shadow-xl">
         <h2 class="text-lg font-semibold mb-1">{{ t('settings.backup.exportTitle') }}</h2>
         <p class="text-sm text-muted-foreground mb-4">{{ t('settings.backup.exportDesc') }}</p>
@@ -377,15 +414,17 @@ onMounted(async () => {
           <div>
             <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.exportPasswordLabel') }}</label>
             <input v-model="exportPassword" type="password" autofocus
+                   :disabled="exporting"
                    class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
-                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
           </div>
           <div>
             <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.exportPasswordConfirmLabel') }}</label>
             <input v-model="exportPasswordConfirm" type="password"
+                   :disabled="exporting"
                    @keyup.enter="startExport"
                    class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
-                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
           </div>
           <p v-if="exportError" class="text-sm text-destructive">{{ exportError }}</p>
           <p v-if="exportSuccess" class="text-sm text-green-600">{{ t('settings.backup.exportSuccess') }}</p>
@@ -395,7 +434,8 @@ onMounted(async () => {
             {{ exporting ? t('settings.backup.exporting') : t('settings.backup.exportBtn') }}
           </button>
           <button @click="showExportModal = false; exportError = ''; exportPassword = ''; exportPasswordConfirm = ''"
-                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground">
+                  :disabled="exporting"
+                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">
             {{ t('common.cancel') }}
           </button>
         </div>
@@ -405,7 +445,7 @@ onMounted(async () => {
     <!-- Import Modal -->
     <div v-if="showImportModal"
          class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-         @click.self="showImportModal = false; importError = ''; importPassword = ''">
+         @click.self="if (!importing) { showImportModal = false; importError = ''; importPassword = '' }">
       <div class="bg-card rounded-xl border border-border p-6 w-full max-w-sm shadow-xl">
         <h2 class="text-lg font-semibold mb-1">{{ t('settings.backup.importTitle') }}</h2>
         <p class="text-sm text-muted-foreground mb-4">{{ t('settings.backup.importDesc') }}</p>
@@ -417,9 +457,10 @@ onMounted(async () => {
           <div>
             <label class="text-xs text-muted-foreground mb-1 block">{{ t('settings.backup.importPasswordLabel') }}</label>
             <input v-model="importPassword" type="password" autofocus
+                   :disabled="importing || importSuccess"
                    @keyup.enter="startImport"
                    class="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-sm
-                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+                          focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
           </div>
           <p v-if="importError" class="text-sm text-destructive">{{ importError }}</p>
           <p v-if="importSuccess" class="text-sm text-green-600">
@@ -431,10 +472,13 @@ onMounted(async () => {
             {{ importing ? t('settings.backup.importing') : t('settings.backup.importBtn') }}
           </button>
           <button @click="showImportModal = false; importError = ''; importPassword = ''"
-                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground">
+                  :disabled="importing"
+                  class="w-full py-2.5 text-sm text-muted-foreground hover:text-foreground disabled:opacity-50">
             {{ t('common.cancel') }}
           </button>
         </div>
+      </div>
+    </div>
       </div>
     </div>
   </div>

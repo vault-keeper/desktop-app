@@ -22,6 +22,12 @@ const router = createRouter({
       meta: { requiresUnlock: true }
     },
     {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../views/settings/SettingsView.vue'),
+      meta: { requiresUnlock: true }
+    },
+    {
       path: '/w/:workspaceId',
       component: () => import('../views/WorkspaceLayout.vue'),
       meta: { requiresUnlock: true },
@@ -86,11 +92,6 @@ const router = createRouter({
           name: 'tags',
           component: () => import('../views/tags/TagList.vue'),
         },
-        {
-          path: 'settings',
-          name: 'settings',
-          component: () => import('../views/settings/SettingsView.vue'),
-        },
       ]
     }
   ]
@@ -103,9 +104,20 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.requiresUnlock && !authStore.isUnlocked) {
     next({ name: 'lock' })
-  } else {
-    next()
+    return
   }
+
+  // Workspace-scoped routes require an active workspace
+  if ('workspaceId' in to.params) {
+    const { useWorkspaceStore } = await import('../stores/workspace')
+    const workspaceStore = useWorkspaceStore()
+    if (!workspaceStore.currentWorkspace || to.params.workspaceId === 'undefined') {
+      next({ name: 'workspaces' })
+      return
+    }
+  }
+
+  next()
 })
 
 export default router

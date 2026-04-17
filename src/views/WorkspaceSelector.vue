@@ -105,7 +105,7 @@ async function handleLock() {
         </div>
         <div class="flex items-center gap-2">
           <button
-            @click="router.push('/w/' + workspaceStore.currentWorkspace?.id + '/settings')"
+            @click="router.push({ name: 'settings' })"
             class="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
             :title="t('nav.settings')"
           >
