@@ -11,7 +11,7 @@ A privacy-focused, offline-first personal vault application for managing account
 - **Bookmarks** — save and categorize web links with notes
 - **Notes** — write and organize markdown notes, with optional per-note secondary-password encryption
 - **Media** — manage and reference local media files
-- **Reports** — generate summaries across your vault data
+- **Reports** — remember your work by daily or weekly report
 - **Tags** — tag and filter content across all categories
 - **Workspace** — multi-workspace support with isolated storage
 - **Lock Screen** — master-password protection with Argon2 hashing and AES-GCM encryption
