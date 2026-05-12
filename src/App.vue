@@ -32,7 +32,17 @@ function stopAutoLockCheck() {
   }
 }
 
+// Throttle activity updates: mousemove fires very rapidly and the
+// auto-lock timeout is measured in minutes, so updating the store
+// (and triggering Pinia reactivity) on every event is wasteful.
+// 1 s of staleness on `lastActivity` is irrelevant for a 5–30 min
+// timeout, so we cap the rate at once per second.
+const ACTIVITY_THROTTLE_MS = 1000
+let lastActivityPushed = 0
 function onUserActivity() {
+  const now = Date.now()
+  if (now - lastActivityPushed < ACTIVITY_THROTTLE_MS) return
+  lastActivityPushed = now
   authStore.updateActivity()
 }
 

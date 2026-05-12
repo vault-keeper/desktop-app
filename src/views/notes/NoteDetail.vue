@@ -3,11 +3,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { invoke } from '@tauri-apps/api/core'
-import MarkdownIt from 'markdown-it'
+import { renderMarkdown } from '../../lib/markdown'
+import '../../styles/hljs-theme.css'
 import type { Note, NoteGroup, Tag } from '../../types'
 import { ArrowLeft, Edit2, Trash2, Lock, Unlock } from 'lucide-vue-next'
-
-const md = new MarkdownIt({ breaks: true, linkify: true })
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
@@ -24,7 +23,7 @@ const passwordError = ref('')
 const decrypting = ref(false)
 
 const renderedHtml = computed(() =>
-  md.render(isDecrypted.value ? decryptedContent.value : (note.value?.content ?? ''))
+  renderMarkdown(isDecrypted.value ? decryptedContent.value : (note.value?.content ?? ''))
 )
 
 async function load() {

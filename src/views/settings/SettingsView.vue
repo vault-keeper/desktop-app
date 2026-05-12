@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
@@ -19,7 +19,14 @@ const workspaceStore = useWorkspaceStore()
 const router = useRouter()
 const { t, locale } = useI18n()
 
-const autoLockMinutes = ref(5)
+// Bind the dropdown directly to the auth store so the persisted value
+// (loaded once in `auth.checkSetup`) is the single source of truth and
+// the dropdown can never drift out of sync with what the auto-lock
+// checker in App.vue actually uses.
+const autoLockMinutes = computed<number>({
+  get: () => authStore.autoLockMinutes,
+  set: (v) => { authStore.autoLockMinutes = v },
+})
 const theme = ref<'light' | 'dark' | 'system'>('system')
 const appVersion = ref('')
 const showChangePassword = ref(false)
@@ -113,8 +120,9 @@ async function changePassword() {
 
 // ── auto lock ─────────────────────────────────────────────────
 async function saveAutoLock() {
-  await invoke('set_auto_lock_timeout', { minutes: autoLockMinutes.value })
-  authStore.autoLockMinutes = autoLockMinutes.value
+  // The store has already been updated by v-model on the <select>.
+  // Persist the new value to the backend so it survives a restart.
+  await invoke('set_auto_lock_timeout', { minutes: authStore.autoLockMinutes })
 }
 
 // ── export ────────────────────────────────────────────────────
@@ -208,7 +216,8 @@ async function startImport() {
 onMounted(async () => {
   try {
     const settings = await invoke<any>('get_settings')
-    autoLockMinutes.value = settings.auto_lock_minutes || 5
+    // auto_lock_minutes is loaded into the auth store by checkSetup,
+    // so we only need to pull theme here.
     theme.value = settings.theme || 'system'
   } catch {}
   appVersion.value = await getVersion()

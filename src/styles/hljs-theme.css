@@ -1,0 +1,120 @@
+/* highlight.js theme — GitHub light + dark, switched via the .dark class
+   already used by the rest of the app.  Kept self-contained so we don't
+   have to ship two competing hljs stylesheets and toggle them at runtime. */
+
+:root {
+  --hljs-bg:           #f6f8fa;
+  --hljs-fg:           #24292e;
+  --hljs-comment:      #6a737d;
+  --hljs-keyword:      #d73a49;
+  --hljs-built-in:     #6f42c1;
+  --hljs-string:       #032f62;
+  --hljs-number:       #005cc5;
+  --hljs-attr:         #6f42c1;
+  --hljs-tag:          #22863a;
+  --hljs-name:         #22863a;
+  --hljs-section:      #005cc5;
+  --hljs-title:        #6f42c1;
+  --hljs-variable:     #e36209;
+  --hljs-symbol:       #005cc5;
+  --hljs-meta:         #6a737d;
+  --hljs-regexp:       #032f62;
+  --hljs-deletion-bg:  #ffeef0;
+  --hljs-deletion-fg:  #b31d28;
+  --hljs-addition-bg:  #f0fff4;
+  --hljs-addition-fg:  #22863a;
+}
+
+.dark {
+  --hljs-bg:           #0d1117;
+  --hljs-fg:           #c9d1d9;
+  --hljs-comment:      #8b949e;
+  --hljs-keyword:      #ff7b72;
+  --hljs-built-in:     #ffa657;
+  --hljs-string:       #a5d6ff;
+  --hljs-number:       #79c0ff;
+  --hljs-attr:         #d2a8ff;
+  --hljs-tag:          #7ee787;
+  --hljs-name:         #7ee787;
+  --hljs-section:      #79c0ff;
+  --hljs-title:        #d2a8ff;
+  --hljs-variable:     #ffa657;
+  --hljs-symbol:       #79c0ff;
+  --hljs-meta:         #8b949e;
+  --hljs-regexp:       #a5d6ff;
+  --hljs-deletion-bg:  rgba(248, 81, 73, 0.15);
+  --hljs-deletion-fg:  #ffdcd7;
+  --hljs-addition-bg:  rgba(46, 160, 67, 0.15);
+  --hljs-addition-fg:  #aff5b4;
+}
+
+/* The container.  We win specificity against @tailwindcss/typography's
+   `prose-pre:bg-muted` because we target the inner <code class="hljs">. */
+.prose pre code.hljs,
+code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0.9em 1em;
+  background: var(--hljs-bg);
+  color: var(--hljs-fg);
+  border-radius: 0.5rem;
+  font-size: 0.85em;
+  line-height: 1.55;
+}
+
+/* Make the surrounding <pre> transparent so the rounded inner background
+   from .hljs reads cleanly, and remove the typography plugin's padding
+   which otherwise stacks on top of ours. */
+.prose pre:has(> code.hljs) {
+  background: transparent;
+  padding: 0;
+}
+
+.hljs-comment,
+.hljs-quote                          { color: var(--hljs-comment); font-style: italic; }
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst                          { color: var(--hljs-keyword); }
+
+.hljs-literal,
+.hljs-number                         { color: var(--hljs-number); }
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp                         { color: var(--hljs-string); }
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id                    { color: var(--hljs-title); font-weight: 600; }
+
+.hljs-type,
+.hljs-class .hljs-title              { color: var(--hljs-title); }
+
+.hljs-tag,
+.hljs-name                           { color: var(--hljs-tag); }
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-template-variable              { color: var(--hljs-attr); }
+
+.hljs-variable                       { color: var(--hljs-variable); }
+.hljs-symbol,
+.hljs-bullet                         { color: var(--hljs-symbol); }
+.hljs-built_in,
+.hljs-builtin-name                   { color: var(--hljs-built-in); }
+.hljs-meta                           { color: var(--hljs-meta); }
+
+.hljs-emphasis                       { font-style: italic; }
+.hljs-strong                         { font-weight: 700; }
+
+.hljs-link                           { text-decoration: underline; }
+
+.hljs-deletion {
+  background: var(--hljs-deletion-bg);
+  color: var(--hljs-deletion-fg);
+}
+.hljs-addition {
+  background: var(--hljs-addition-bg);
+  color: var(--hljs-addition-fg);
+}

@@ -15,12 +15,18 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function checkSetup() {
     try {
-      const [setupDone, unlocked] = await Promise.all([
+      const [setupDone, unlocked, autoLock] = await Promise.all([
         invoke<boolean>('is_setup_complete'),
         invoke<boolean>('is_vault_unlocked'),
+        // Load the persisted auto-lock timeout into the store so the
+        // checker in App.vue compares against the user's chosen value
+        // instead of the hardcoded default.  Falls back to 5 if the
+        // backend call fails for any reason.
+        invoke<number>('get_auto_lock_timeout').catch(() => 5),
       ])
       isSetupDone.value = setupDone
       isUnlocked.value = unlocked
+      autoLockMinutes.value = autoLock || 5
     } catch {
       isSetupDone.value = false
       isUnlocked.value = false
@@ -33,6 +39,7 @@ export const useAuthStore = defineStore('auth', () => {
     await invoke('setup_master_password', { password })
     isUnlocked.value = true
     isSetupDone.value = true
+    lastActivity.value = Date.now()
   }
 
   async function verifyMasterPassword(password: string): Promise<boolean> {
